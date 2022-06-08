@@ -1,0 +1,25 @@
+df_size,1761
+first_date,2016-01-02
+last_date,2022-01-01
+Total_Comments (mean),217.04940374787054
+Total_Awards (mean),0.6189664963089154
+Total_Score (mean),205.62862010221465
+Title_Sentiment (mean),0.04032150204034343
+Text_Sentiment (mean),0.19628234765262415
+Total_Comments (standard dev),560.1012503343165
+Total_Awards (standard dev),13.317267637933455
+Total_Score (standard dev),2241.7475981512302
+Title_Sentiment (standard dev),0.2001100425691779
+Text_Sentiment (standard dev),0.3603948119732287
+date (minimum),2016-01-02
+Total_Comments (minimum),0
+Total_Awards (minimum),0.0
+Total_Score (minimum),0
+Title_Sentiment (minimum),-0.9881
+Text_Sentiment (minimum),-0.9991
+date (maximum),2022-01-01
+Total_Comments (maximum),11907
+Total_Awards (maximum),537.0
+Total_Score (maximum),65560
+Title_Sentiment (maximum),0.8658
+Text_Sentiment (maximum),1.0
