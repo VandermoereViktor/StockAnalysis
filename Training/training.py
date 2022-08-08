@@ -197,11 +197,10 @@ def train(ticker, subreddit, folder_name, start, end, data_location, nr_observat
     before = np.append(z, train_Y.reshape(train_Y.shape[0], 1), axis=1)
     before = min_max_scaler.inverse_transform(before)
     before = before[:, -1]
-
     if plot_prediction_bool:
         # plot test prediction
         destination = f'../Data/Graphs/{folder_name}/'
-        name = f'TestPrediction-Epochs{epochs}-Sentiment({sentiment})'
+        name = f'TestPrediction-Epochs{epochs}-Sentiment({sentiment})-obs{nr_observations}'
         title = ticker+f' testing-data fit {sentiment} ({epochs} Epochs, {nr_observations} timesteps)'
         plot_test_prediction(real, prediction, before, destination, name, title)
 
