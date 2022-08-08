@@ -1,0 +1,11 @@
+/venv/
+.idea
+/Data/Raw/All/
+/Data/Raw/Amazon/
+/Data/Raw/AMC/
+/Data/Raw/AMD/
+/Data/Raw/Apple/
+/Data/Raw/Crypto/
+/Data/Raw/GME/
+/Data/Raw/SPY/
+/Data/Raw/TSLA/

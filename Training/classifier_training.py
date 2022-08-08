@@ -32,6 +32,8 @@ def get_sentiment_data(file_location, start, end):
 def multi_train(tickers, starts, ends, locations, model):
     i = 0
     for filename in os.listdir('../Data/Sentiment'):
+        if i == len(tickers):
+            break
         f = os.path.join('../Data/Sentiment', filename)
         if os.path.isfile(f):
             train(ticker=tickers[i],
@@ -51,7 +53,7 @@ def get_model(model_name, X, Y):
         model.add(Dense(4, activation='relu'))
         model.add(Dense(1, activation='sigmoid'))
         model.compile(loss='binary_crossentropy', optimizer='rmsprop', metrics=['accuracy'])
-        model.fit(x=X, y=Y, epochs=200, validation_split=0.2, verbose=1, shuffle=False)
+        model.fit(x=X, y=Y, epochs=200, validation_split=0.2, verbose=0, shuffle=False)
         return model
     elif model_name == "dt":
         model = RandomForestClassifier()
@@ -102,20 +104,24 @@ def train(ticker, start, end, data_location, model_name):
     prediction = model.predict(X_val)
 
     my_accuracy = accuracy_score(Y_val, prediction.round())
-    # print("Prediction:", prediction[:20])
-    # print("Real:", Y_val[:20])
+    print('-'*50)
     print(ticker + ": ", my_accuracy)
-    print("Baseline: ", Y.sum() / len(Y))
+    base = Y.sum() / len(Y)
+    base = max(base, 1 - base)
+    print("Baseline: ", base)
+    print("Fixed: ", my_accuracy/base)
+    print('-'*50)
 
 
-ticker_array = ['AAPL', 'AMC', 'AMD', 'AMZN', 'BTC-USD', 'GME', 'TSLA']
+ticker_array = ['AAPL', 'AMC', 'AMD', 'AMZN', 'GME', '^GSPC', 'SPY', 'TSLA']
 start_array = [
     [2016, 1, 1],
     [2020, 6, 1],
     [2020, 1, 1],
     [2018, 1, 1],
-    [2017, 1, 1],
-    [2019, 6, 1],
+    [2016, 1, 1],
+    [2019, 1, 1],
+    [2020, 1, 1],
     [2019, 9, 1],
 ]
 end_array = [
@@ -125,15 +131,22 @@ end_array = [
     [2022, 1, 1],
     [2022, 1, 1],
     [2022, 1, 1],
+    [2022, 1, 1],
     [2022, 4, 1],
 ]
 location_array = [
-    "../Data/Sentiment/WSB--AAPL--VADER--100--1.2016-1.2022.csv",
-    "../Data/Sentiment/WSB--AMC--VADER--100--6.2020-4.2022.csv",
-    "../Data/Sentiment/WSB--AMD--VADER--200--1.2020-1.2022.csv",
-    "../Data/Sentiment/WSB--AMZN--VADER--100--1.2018-1.2022.csv",
-    "../Data/Sentiment/WSB--BTC--VADER--40--1.2017-1.2022.csv",
-    "../Data/Sentiment/WSB--GME--VADER--100--6.2019-1.2022.csv",
-    "../Data/Sentiment/WSB--TSLA--VADER--100--9.2019-4.2022.csv",
+    "../Data/Sentiment/AAPL-1.2016-1.2022(WSB).csv",
+    "../Data/Sentiment/AMC-6.2020-4.2022(WSB).csv",
+    "../Data/Sentiment/AMD-1.2020-1.2022(WSB).csv",
+    "../Data/Sentiment/AMZN-1.2018-1.2022(WSB).csv",
+    "../Data/Sentiment/GME-1.2016-1.2022(WSB).csv",
+    "../Data/Sentiment/GSPC-1.2019-1.2022(WSB).csv",
+    "../Data/Sentiment/SPY-1.2020-1.2022(WSB).csv",
+    "../Data/Sentiment/TSLA-9.2019-4.2022(WSB).csv"
 ]
-multi_train(ticker_array, start_array, end_array, location_array, "dt")
+
+# available models:
+# Neural network (code: nn)
+# Naive Bayes (code: nb)
+# Decision Tree (code: dt)
+multi_train(ticker_array, start_array, end_array, location_array, "nn")

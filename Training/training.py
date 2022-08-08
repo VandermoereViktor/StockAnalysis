@@ -129,68 +129,59 @@ def train(ticker, subreddit, folder_name, start, end, data_location, nr_observat
     scaled_features = min_max_scaler.fit_transform(df_feature_vector.values)
 
     df_time_series_vector = series_to_supervised(scaled_features, 1, 1, True)
-    df_time_series_vector.info()
+
+    df_time_series_vector = df_time_series_vector.values
+    series_X, series_Y = df_time_series_vector[:, :-1], df_time_series_vector[:, -1]
+    series_X = series_X.reshape(series_X.shape[0], 1, series_X.shape[1])
+
+    timesteps_vals_X = []
+    timesteps_vals_Y = series_Y[nr_observations-1:]
+
+    for x in range(nr_observations, len(series_X) + 1):
+        timesteps_vals_X.append(series_X[x - nr_observations:x, 0])
+
+    vals_X = np.array(timesteps_vals_X)
 
     # split in training and testing dataframes
-    length = df_time_series_vector.shape[0]
-    train_df = df_time_series_vector[0:int(length * 0.8)]
-    test_df = df_time_series_vector[int(length * 0.8):]
-
-    train = train_df.values
-    train_X, train_Y = train[:, :-1], train[:, -1]
-    train_X = train_X.reshape(train_X.shape[0], 1, train_X.shape[1])
-    test = test_df.values
-    test_X, test_Y = test[:, :-1], test[:, -1]
-    test_X = test_X.reshape(test_X.shape[0], 1, test_X.shape[1])
-
-    timesteps_train_X = []
-    timesteps_train_Y = train_Y[10:]
-    timesteps_test_X = []
-    timesteps_test_Y = test_Y[10:]
-
-    for x in range(nr_observations, len(train_X)):
-        timesteps_train_X.append(train_X[x-nr_observations:x, 0])
-
-    for x in range(nr_observations, len(test_X)):
-        timesteps_test_X.append(test_X[x-nr_observations:x, 0])
-
-    timesteps_train_X = np.array(timesteps_train_X)
-    timesteps_test_X = np.array(timesteps_test_X)
+    length = vals_X.shape[0]
+    train_X = vals_X[0:int(length * 0.8)]
+    train_Y = timesteps_vals_Y[0:int(length * 0.8)]
+    test_X = vals_X[int(length * 0.8):]
+    test_Y = timesteps_vals_Y[int(length * 0.8):]
 
     # design network
     model = Sequential()
-    model.add(LSTM(units=50, return_sequences=True, input_shape=(timesteps_train_X.shape[1], timesteps_train_X.shape[2])))
+    model.add(LSTM(units=50, return_sequences=True, input_shape=(train_X.shape[1], train_X.shape[2])))
     model.add(Dropout(0.2))
 
     model.add(LSTM(units=50, return_sequences=True))
     model.add(Dropout(0.2))
 
-    model.add(LSTM(units=50, return_sequences=True))
+    model.add(LSTM(units=50, return_sequences=False))
     model.add(Dense(1))
 
     model.compile(loss='mae', optimizer='adam')
 
-    fit = model.fit(timesteps_train_X, timesteps_train_Y, epochs=epochs, batch_size=72,
-                    validation_data=(timesteps_test_X, timesteps_test_Y), verbose=2,
+    fit = model.fit(train_X, train_Y, epochs=epochs, batch_size=72,
+                    validation_data=(test_X, test_Y), verbose=2,
                     shuffle=False)
     if plot_loss_bool:
         # plot loss
         destination = f'../Data/Graphs/{folder_name}/'
-        name = f'Loss-Epochs{epochs}-Sentiment({sentiment})'
-        title = f'Loss {subreddit}: {start.strftime("%m/%d/%Y")} - {end.strftime("%m/%d/%Y")}'
+        name = f'Loss-Epochs{epochs}-Sentiment({sentiment})-Observations({nr_observations})'
+        title = f'Loss {subreddit}: {start.strftime("%m/%d/%Y")} - {end.strftime("%m/%d/%Y")}  obs-{nr_observations}-epochs:{epochs}'
         plot_loss(fit, destination, name, title)
 
     # save model
     if sentiment:
-        model.save(f"../Data/Models/{ticker}--{subreddit}--epochs{epochs}--{sentiment}")
+        model.save(f"../Data/Models/{ticker}--{subreddit}--epochs{epochs}--{sentiment}--observations{nr_observations}")
     else:
-        model.save(f"../Data/Models/{ticker}--{subreddit}--epochs{epochs}--Base")
+        model.save(f"../Data/Models/{ticker}--{subreddit}--epochs{epochs}--Base--observations{nr_observations}")
     # make a prediction
     result = model.predict(test_X)
 
-    print(result)
-
-    result = result.reshape((result.shape[0], result.shape[2]))
+    if len(result.shape) > 2:
+        result = result.reshape((result.shape[0], result.shape[2]))
     # recreate ndarray shape before scaling was applied
     z = np.zeros((result.shape[0], 5))
     prediction = np.append(z, result, axis=1)
@@ -198,11 +189,12 @@ def train(ticker, subreddit, folder_name, start, end, data_location, nr_observat
     # only need last column
     prediction = prediction[:, -1]
     # recreate values
-    real = test_df.values[:, :-1]
+    real = np.append(z, test_Y.reshape(test_Y.shape[0], 1), axis=1)
     real = min_max_scaler.inverse_transform(real)
     real = real[:, -1]
 
-    before = train_df.values[:, :-1]
+    z = np.zeros((train_Y.shape[0], 5))
+    before = np.append(z, train_Y.reshape(train_Y.shape[0], 1), axis=1)
     before = min_max_scaler.inverse_transform(before)
     before = before[:, -1]
 
@@ -210,18 +202,18 @@ def train(ticker, subreddit, folder_name, start, end, data_location, nr_observat
         # plot test prediction
         destination = f'../Data/Graphs/{folder_name}/'
         name = f'TestPrediction-Epochs{epochs}-Sentiment({sentiment})'
-        title = ticker+f' testing-data fit {sentiment} ({epochs} Epochs)'
+        title = ticker+f' testing-data fit {sentiment} ({epochs} Epochs, {nr_observations} timesteps)'
         plot_test_prediction(real, prediction, before, destination, name, title)
 
 
-train(ticker="AAPL",
+train(ticker="^GSPC",
       subreddit="wallstreetbets",
-      folder_name='WSB-AAPL-VADER-TRAINING',
-      start=datetime.datetime(2016, 1, 1),
+      folder_name='WSB-SPX-VADER-TRAINING',
+      start=datetime.datetime(2019, 1, 1),
       end=datetime.datetime(2022, 1, 1) - datetime.timedelta(days=1),
-      data_location="../Data/Sentiment/WSB--AAPL--VADER--100--1.2016-1.2022.csv",
+      data_location="../Data/Sentiment/GSPC-1.2019-1.2022(WSB).csv",
       nr_observations=10,
-      epochs=100,
+      epochs=1000,
       plot_features_bool=False,
       plot_loss_bool=True,
       plot_prediction_bool=True,

@@ -36,12 +36,13 @@ def calculate_sentiment(file, filename):
     # create folder if needed
     if not os.path.exists("../Data/Sentiment/"):
         os.makedirs("../Data/Sentiment/")
-    df.to_csv("../Data/Sentiment/New/" + filename, sep=',', encoding='utf-8')
+    df.to_csv("../Data/Sentiment/" + filename + ".csv", sep=',', encoding='utf-8')
     print(tabulate(df, headers='keys', tablefmt='psql'))
 
 
 new_words = {
     'citron': -4.0,
+    'coronavirus': -2.0,
     'hidenburg': -4.0,
     'moon': 4.0,
     'highs': 2.0,
@@ -64,18 +65,23 @@ new_words = {
     'bearish': -3.7,
     'bagholder': -1.7,
     'stonk': 1.9,
-    'green': 1.9,
+    'stonks': 2.5,
+    'green': 2.5,
+    'red': -2.2,
     'print': 2.2,
     'rocket': 2.2,
     'bull': 4.0,
     'bear': -4.0,
     'pumping': -1.0,
+    'turmoil': -2.0,
+    'volatility': -1.0,
+    'volatile': -1.0,
     'sus': -3.0,
     'offering': -2.3,
     'rip': -4.0,
     'downgrade': -3.0,
     'upgrade': 3.0,
-    'pump': 1.9,
+    'pump': -1.0,
     'hot': 1.5,
     'drop': -2.5,
     'rebound': 1.5,
@@ -93,10 +99,30 @@ new_words = {
     'upwards': 3.0,
     'prediction': 1.0,
     'big': 2.0,
+    '🚀': 5.0,
+    'bitches': -0.1,
+    'fags': -0.1,
+    'faggots': -0.1,
+    'retards': 1.2,
+    'retard': 0.8,
+    'cliff': -4.0,
+    'millionaire': 1.5,
+    'roof': 3.5,
+    'loss': -1.5,
+    'losses': -2.5,
+    'gains': 3.5,
+    'gain': 2.5,
+    'winning': 3.0,
+    'winnings': 2.2,
+    'hit': -3.0,
+    'potential': 3.0,
+    'bubble': -2.5,
+    'crash': -4.0,
+    'shitty': 0
 }
 
 analyzer = SentimentIntensityAnalyzer()
 analyzer.lexicon.update(new_words)
-calculate_sentiment(file="../Data/Raw/Crypto/CryptoCurrency_40_1.2017-1.2022.csv",
-                    filename="BTC-1.2017-1.2022.csv",
+calculate_sentiment(file="../Data/Raw/All/wallstreetbets_100_2.2022-7.2022.csv",
+                    filename="GSPC-2.2022-7.2022(WSB)",
                     )

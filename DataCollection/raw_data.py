@@ -105,13 +105,13 @@ def mass_data_collection(subreddit_name, filter_word, filter_arguments, start_ye
 arguments = ['author', 'created', 'link_flair_text', 'num_comments',
              'title', 'total_awards_received', 'upvote_ratio', 'score', 'selftext']
 mass_data_collection(subreddit_name="wallstreetbets",
-                     filter_word="AMZN | Amazon",
+                     filter_word="SPY",
                      filter_arguments=arguments,
-                     start_year=2018,
-                     start_month=1,
+                     start_year=2022,
+                     start_month=2,
                      end_year=2022,
-                     end_month=1,
-                     location="../Data/Raw/Amazon",
-                     limit=100,
+                     end_month=7,
+                     location="../Data/Raw/SPY",
+                     limit=30,
                      type="Submissions")
 

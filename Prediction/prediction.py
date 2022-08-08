@@ -91,32 +91,35 @@ def predict(ticker, model_name, model_abbreviation, title, folder_name, start, e
     else:
         df_feature_vector = df_ticker
 
+
+
     # scale values
     min_max_scaler = MinMaxScaler(feature_range=(0, 1))
     scaled_features = min_max_scaler.fit_transform(df_feature_vector.values)
 
-    df_time_series_vector = series_to_supervised(scaled_features, 1, 1, True)
-    df_time_series_vector.info()
+    df_vector = series_to_supervised(scaled_features, 1, 1, True)
 
-    features = df_time_series_vector.values
-    features_X, features_Y = features[:, :-1], features[:, -1]
-    features_X = features_X.reshape(features_X.shape[0], 1, features_X.shape[1])
+    df_time_series_vector = df_vector.values
+    series_X, series_Y = df_time_series_vector[:, :-1], df_time_series_vector[:, -1]
+    series_X = series_X.reshape(series_X.shape[0], 1, series_X.shape[1])
 
-    timesteps_X = []
-    timesteps_Y = features_Y[10:]
+    timesteps_vals_X = []
 
-    for x in range(nr_observations, len(features_X)):
-        timesteps_X.append(features_X[x - nr_observations:x, 0])
+    for x in range(nr_observations, len(series_X) + 1):
+        timesteps_vals_X.append(series_X[x - nr_observations:x, 0])
 
-    timesteps_X = np.array(timesteps_X)
+    vals_X = np.array(timesteps_vals_X)
+    vals_Y = series_Y[nr_observations-1:]
 
     # load model
     model = keras.models.load_model(f"../Data/Models/{model_name}")
 
     # make a prediction
-    result = model.predict(features_X)
-    result = result.reshape((result.shape[0], result.shape[2]))
-    mse = calc_mse(result.reshape(result.shape[0]), df_time_series_vector.iloc[:, -1].values)
+    result = model.predict(vals_X)
+
+    if len(result.shape) > 2:
+        result = result.reshape((result.shape[0], result.shape[2]))
+    mse = calc_mse(result.reshape(result.shape[0]), df_vector.iloc[:, -1].values)
     # recreate ndarray shape before scaling was applied
     z = np.zeros((result.shape[0], 5))
     prediction = np.append(z, result, axis=1)
@@ -124,11 +127,13 @@ def predict(ticker, model_name, model_abbreviation, title, folder_name, start, e
     # only need last column
     prediction = prediction[:, -1]
     # recreate values
-    real = df_time_series_vector.values[:, :-1]
+    real = vals_Y.reshape(result.shape[0], 1)
+    real = np.append(z, real, axis=1)
     real = min_max_scaler.inverse_transform(real)
     real = real[:, -1]
+
     pred_to_save = pd.DataFrame(prediction)
-    mse_string=format(mse, ".4f")
+    mse_string = format(mse, ".4f")
     mse_string = mse_string.replace('.', ',')
     sent = ' no Sentiment'
     if sentiment:
@@ -147,15 +152,15 @@ def predict(ticker, model_name, model_abbreviation, title, folder_name, start, e
         plot_prediction(real, prediction, destination, name, title)
 
 
-predict(ticker="TSLA",
-        model_name="AAPL--wallstreetbets--epochs100--Vader",
-        model_abbreviation="AAPL",
-        title="Prediction of TSLA on AAPL trained model with sentiment",
-        folder_name='WSB-TSLA-ON-WSB-AAPL',
-        start=datetime.datetime(2019, 9, 1),
-        end=datetime.datetime(2022, 4, 1) - datetime.timedelta(days=1),
-        data_location="../Data/Sentiment/WSB--TSLA--VADER--100--9.2019-4.2022.csv",
-        nr_observations=10,
+predict(ticker="^GSPC",
+        model_name="^GSPC--wallstreetbets--epochs100--Vader--observations50",
+        model_abbreviation="^GSPC",
+        title="Prediction of ^GSPC on ^GSPC trained model -50obs-",
+        folder_name='WSB-GSPC-ON-WSB-GSPC',
+        start=datetime.datetime(2020, 2, 1),
+        end=datetime.datetime(2022, 7, 1) - datetime.timedelta(days=1),
+        data_location="../Data/Sentiment/GSPC-2.2022-7.2022(WSB).csv",
+        nr_observations=50,
         plot_prediction_bool=True,
         sentiment=True
         )
