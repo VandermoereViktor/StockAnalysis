@@ -1,6 +1,7 @@
 import pandas_datareader as pdr
 import datetime as datetime
 import pandas as pd
+import numpy as np
 import os
 from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import MinMaxScaler
@@ -9,6 +10,38 @@ from sklearn import tree
 from keras.models import Sequential
 from sklearn.naive_bayes import MultinomialNB, GaussianNB
 from keras.layers import Dense
+from matplotlib import pyplot
+
+
+def create_bar_graph(tickers, accuracy, base, fixed, modeltype):
+    model_dict = {
+        "nn": "Neural Network",
+        "dt": "Decision Tree",
+        "nb": "Naive Bayes"
+    }
+    title = model_dict[modeltype] + " accuracy"
+
+    x = np.arange(len(tickers))  # the label locations
+    width = 0.35  # the width of the bars
+
+    fig, ax = pyplot.subplots()
+    rects1 = ax.bar(x - width / 2, accuracy, width, label='Accuracy')
+    rects2 = ax.bar(x + width / 2, base, width, label='BaseLine')
+
+    # Add some text for labels, title and custom x-axis tick labels, etc.
+    ax.set_ylabel('Accuracy')
+    ax.set_title(title)
+    ax.set_xticks(x, tickers)
+    ax.bar_label(rects1, padding=3, rotation='vertical')
+    ax.bar_label(rects2, padding=3, rotation='vertical')
+    fig.legend(loc="upper right")
+    pyplot.ylim(0, 0.7)
+    fig.tight_layout()
+    # create folder if needed
+    if not os.path.exists("../Data/Graphs/Classifier"):
+        os.makedirs("../Data/Graphs/Classifier")
+    pyplot.savefig("../Data/Graphs/Classifier" + "/" + title + ".png")
+    pyplot.show()
 
 
 def get_ticker_data(ticker_symbol, start_datetime, end_datetime):
@@ -31,18 +64,31 @@ def get_sentiment_data(file_location, start, end):
 
 def multi_train(tickers, starts, ends, locations, model):
     i = 0
+    acc_vector = []
+    base_vector = []
+    fixed_vector = []
     for filename in os.listdir('../Data/Sentiment'):
         if i == len(tickers):
             break
         f = os.path.join('../Data/Sentiment', filename)
         if os.path.isfile(f):
-            train(ticker=tickers[i],
-                  start=datetime.datetime(starts[i][0], starts[i][1], starts[i][2]),
-                  end=datetime.datetime(ends[i][0], ends[i][1], ends[i][2]) - datetime.timedelta(days=1),
-                  data_location=locations[i],
-                  model_name=model
-                  )
+            acc, base, fixed = train(ticker=tickers[i],
+                                     start=datetime.datetime(starts[i][0], starts[i][1], starts[i][2]),
+                                     end=datetime.datetime(ends[i][0], ends[i][1], ends[i][2]) - datetime.timedelta(
+                                         days=1),
+                                     data_location=locations[i],
+                                     model_name=model
+                                     )
             i += 1
+            acc_vector.append((round(acc, 3)))
+            base_vector.append((round(base, 3)))
+            fixed_vector.append((round(fixed, 3)))
+    create_bar_graph(tickers=tickers,
+                     accuracy=acc_vector,
+                     base=base_vector,
+                     fixed=fixed_vector,
+                     modeltype=model
+                     )
 
 
 def get_model(model_name, X, Y):
@@ -109,8 +155,10 @@ def train(ticker, start, end, data_location, model_name):
     base = Y.sum() / len(Y)
     base = max(base, 1 - base)
     print("Baseline: ", base)
-    print("Fixed: ", my_accuracy/base)
+    fixed = my_accuracy/base
+    print("Fixed: ", fixed)
     print('-'*50)
+    return my_accuracy, base, fixed
 
 
 ticker_array = ['AAPL', 'AMC', 'AMD', 'AMZN', 'GME', '^GSPC', 'SPY', 'TSLA']
@@ -149,4 +197,4 @@ location_array = [
 # Neural network (code: nn)
 # Naive Bayes (code: nb)
 # Decision Tree (code: dt)
-multi_train(ticker_array, start_array, end_array, location_array, "nn")
+multi_train(ticker_array, start_array, end_array, location_array, "nb")
