@@ -129,10 +129,10 @@ def apply_vader(name, upperBounds=0.0, update=False, ):
     # df['selftext_sentiment'] = df['selftext_sentiment'].apply(sentiment_analysis)
     corr = df.corr(method='pearson')
     # shorten string to display nice in table
-    df = df.astype(str).apply(lambda x: x.str[:180])
+    df = df.astype(str).apply(lambda x: x.str[:150])
     # only show rows with high disparity between measured sentiment and valued sentiment
     df = df.astype({"title": 'string', "valued_sentiment": 'float64', "calculated_sentiment": 'float64'})
-    df = df[abs(df.valued_sentiment - df.calculated_sentiment) > upperBounds]
+    df = df[abs(df.valued_sentiment - df.calculated_sentiment) >= upperBounds]
     print(tabulate(df, headers='keys', tablefmt='psql'))
     print("CORR: ", name+' ', corr["valued_sentiment"][1])
 
@@ -149,7 +149,7 @@ apply_vader(name="subset_spy_valued", upperBounds=2, update=False)
 apply_vader(name="subset_gme_valued", upperBounds=2, update=False)
 print("=="*80)
 print("POST-UPDATED SENTIMENT:")
-apply_vader(name="subset_valued", upperBounds=0, update=True)
-apply_vader(name="subset_spy_valued", upperBounds=0, update=True)
-apply_vader(name="subset_gme_valued", upperBounds=0, update=True)
+apply_vader(name="subset_valued", upperBounds=1, update=True)
+apply_vader(name="subset_spy_valued", upperBounds=1, update=True)
+apply_vader(name="subset_gme_valued", upperBounds=1, update=True)
 print("=="*80)
