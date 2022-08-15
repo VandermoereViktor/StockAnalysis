@@ -18,8 +18,10 @@ model_dict = {
 }
 
 
-def create_prediction_graph(real, predicted, modeltype, ticker):
+def create_prediction_graph(real, predicted, modeltype, ticker, sentiment):
     title = modeltype + " correctness for " + ticker
+    if not sentiment:
+        title = title + " (no Sentiment)"
 
     pyplot.figure(figsize=(15, 2), dpi=200)
     # used to get 'Predict Up' always on top
@@ -41,10 +43,11 @@ def create_prediction_graph(real, predicted, modeltype, ticker):
     pyplot.figure().clear()
 
 
-def create_bar_graph(tickers, accuracy, base, modeltype):
+def create_bar_graph(tickers, accuracy, base, modeltype, sentiment):
 
     title = modeltype + " accuracy"
-
+    if not sentiment:
+        title = title + " (no Sentiment)"
     x = np.arange(len(tickers))  # the label locations
     width = 0.35  # the width of the bars
 
@@ -67,9 +70,11 @@ def create_bar_graph(tickers, accuracy, base, modeltype):
     pyplot.savefig("../Data/Graphs/Classifier" + "/" + title + ".png")
 
 
-def create_pr_graph(recall, precision, modeltype, ticker):
+def create_pr_graph(recall, precision, modeltype, ticker, sentiment):
     # create precision recall curve
     title = modeltype + f" Precision-Recall Curve ({ticker})"
+    if not sentiment:
+        title = title + " (no Sentiment)"
     fig, ax = pyplot.subplots()
     ax.plot(recall, precision, color='red')
     # add axis labels to plot
@@ -101,12 +106,12 @@ def get_sentiment_data(file_location, start, end):
     return df_sentiment_full.fillna(column_means)
 
 
-def multi_train(tickers, starts, ends, locations, model, bar_graph=False, prediction_graph=False, precall_graph=False):
+def multi_train(tickers, starts, ends, locations, model, bar_graph=False, prediction_graph=False, precall_graph=False,
+                sentiment=True):
     i = 0
     acc_vector = []
     base_vector = []
     fixed_vector = []
-
     for filename in os.listdir('../Data/Sentiment'):
         if i == len(tickers):
             break
@@ -119,7 +124,8 @@ def multi_train(tickers, starts, ends, locations, model, bar_graph=False, predic
                                      data_location=locations[i],
                                      model_name=model,
                                      precall=precall_graph,
-                                     prediction_graph=prediction_graph
+                                     prediction_graph=prediction_graph,
+                                     sentiment=sentiment
                                      )
             i += 1
             acc_vector.append((round(acc, 3)))
@@ -130,7 +136,8 @@ def multi_train(tickers, starts, ends, locations, model, bar_graph=False, predic
         create_bar_graph(tickers=tickers,
                          accuracy=acc_vector,
                          base=base_vector,
-                         modeltype=model_dict[model]
+                         modeltype=model_dict[model],
+                         sentiment=sentiment
                          )
 
 
@@ -154,10 +161,12 @@ def get_model(model_name, X, Y):
         return model
 
 
-def train(ticker, start, end, data_location, model_name, precall, prediction_graph):
+def train(ticker, start, end, data_location, model_name, precall, prediction_graph, sentiment):
     df_ticker = get_ticker_data(ticker, start, end)
 
     df_features = get_sentiment_data(data_location, start, end)
+    if not sentiment:
+        df_features = df_features.drop(['Title_Sentiment', 'Text_Sentiment'], axis=1)
     # concatenate ticker and sentiment dataframes
     df_feature_vector = df_features.join(df_ticker)
     df_feature_vector = df_feature_vector.dropna()
@@ -189,8 +198,6 @@ def train(ticker, start, end, data_location, model_name, precall, prediction_gra
     Y = training[:, -1]
 
     model = get_model(model_name, X, Y)
-    if ticker=="GME":
-        print("A")
     if model_name == 'nn':
         prediction = model.predict(X_val)
     else:
@@ -199,7 +206,8 @@ def train(ticker, start, end, data_location, model_name, precall, prediction_gra
         prediction = prediction[:, [1]].reshape([prediction.shape[0]])
 
     if prediction_graph:
-        create_prediction_graph(real=Y_val, predicted=prediction.round(), modeltype=model_dict[model_name], ticker=ticker)
+        create_prediction_graph(real=Y_val, predicted=prediction.round(), modeltype=model_dict[model_name],
+                                ticker=ticker, sentiment=sentiment)
     my_accuracy = accuracy_score(Y_val, prediction.round())
     print('-' * 50)
     print(ticker + ": ", my_accuracy)
@@ -218,9 +226,10 @@ def train(ticker, start, end, data_location, model_name, precall, prediction_gra
         print("False positive: ", fp, "| False negative", fn)
         prediction = prediction.astype('float64')
         precision, recall, thresholds = precision_recall_curve(y_true=Y_val, probas_pred=prediction)
-        create_pr_graph(recall=recall, precision=precision, modeltype=model_dict[model_name], ticker=ticker)
+        create_pr_graph(recall=recall, precision=precision, modeltype=model_dict[model_name],
+                        ticker=ticker, sentiment=sentiment)
 
-        return my_accuracy, base, fixed
+    return my_accuracy, base, fixed
 
 
 ticker_array = ['AAPL', 'AMC', 'AMD', 'AMZN', 'GME', '^GSPC', 'SPY', 'TSLA']
@@ -259,7 +268,8 @@ location_array = [
 # Neural network (code: nn)
 # Naive Bayes (code: nb)
 # Decision Tree (code: dt)
-multi_train(ticker_array, start_array, end_array, location_array, "dt",
-            bar_graph=False,
+multi_train(ticker_array, start_array, end_array, location_array, "nb",
+            bar_graph=True,
             prediction_graph=False,
-            precall_graph=True)
+            precall_graph=False,
+            sentiment=False)
