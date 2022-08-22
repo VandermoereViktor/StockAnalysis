@@ -417,7 +417,7 @@ location_array = [
 # Long Short Term Memory (code: lstm)
 # Naive Bayes (code: nb)
 # Decision Tree (code: dt)
-multi_train(ticker_array, start_array, end_array, location_array, "nn",
+multi_train(ticker_array, start_array, end_array, location_array, "lstm",
             bar_graph=False,
             prediction_graph=True,
             precall_graph=False,
