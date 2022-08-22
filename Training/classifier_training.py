@@ -8,10 +8,12 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.ensemble import RandomForestClassifier
 from keras.models import Sequential
 from sklearn.naive_bayes import GaussianNB
-from keras.layers import Dense
+from keras.layers import Dense, LSTM, Dropout
 from matplotlib import pyplot
+from sklearn.model_selection import train_test_split
 
 model_dict = {
+    "lstm": "Long short-term memory",
     "nn": "Neural Network",
     "dt": "Decision Tree",
     "nb": "Naive Bayes"
@@ -22,7 +24,7 @@ def create_prediction_graph(real, predicted, modeltype, ticker, sentiment):
     title = modeltype + " correctness for " + ticker
     if not sentiment:
         title = title + " (no Sentiment)"
-
+    predicted = predicted.round()
     pyplot.figure(figsize=(15, 2), dpi=200)
     # used to get 'Predict Up' always on top
     initPoints, = pyplot.plot([0, 1], ['Predict Down', 'Predict Up'], marker='o', color='k')
@@ -36,11 +38,36 @@ def create_prediction_graph(real, predicted, modeltype, ticker, sentiment):
     pyplot.title(title)
     pyplot.tight_layout()
     # create folder if needed
-    if not os.path.exists("../Data/Graphs/Classifier/Accuracy"):
-        os.makedirs("../Data/Graphs/Classifier/Accuracy")
+    if not os.path.exists("../Data/Graphs/Classifier/Predictions"):
+        os.makedirs("../Data/Graphs/Classifier/Predictions")
     initPoints.remove()
-    pyplot.savefig("../Data/Graphs/Classifier/Accuracy" + "/" + title + ".png")
+    pyplot.savefig("../Data/Graphs/Classifier/Predictions" + "/" + title + ".png")
     pyplot.figure().clear()
+    pyplot.clf()
+
+
+def create_prediction_chance_graph(real, predicted, modeltype, ticker, sentiment):
+    title = modeltype + " correctness for " + ticker
+    if not sentiment:
+        title = title + " (no Sentiment)"
+
+    pyplot.figure(figsize=(15, 2), dpi=200)
+    # used to get 'Predict Up' always on top
+
+    for i in range(len(real)):
+        if abs(real[i] - predicted[i]) < 0.5:
+            pyplot.plot(i, predicted[i], 'go')
+        else:
+            pyplot.plot(i, predicted[i], 'rx')
+    pyplot.title(title)
+    pyplot.tight_layout()
+    pyplot.ylim(0, 1)
+    # create folder if needed
+    if not os.path.exists("../Data/Graphs/Classifier/Predictions/Chance"):
+        os.makedirs("../Data/Graphs/Classifier/Predictions/Chance")
+    pyplot.savefig("../Data/Graphs/Classifier/Predictions/Chance" + "/" + title + ".png")
+    pyplot.figure().clear()
+    pyplot.clf()
 
 
 def create_bar_graph(tickers, accuracy, base, modeltype, sentiment):
@@ -50,24 +77,74 @@ def create_bar_graph(tickers, accuracy, base, modeltype, sentiment):
         title = title + " (no Sentiment)"
     x = np.arange(len(tickers))  # the label locations
     width = 0.35  # the width of the bars
-
     fig, ax = pyplot.subplots()
-    rects1 = ax.bar(x - width / 2, accuracy, width, label='Accuracy')
+    rects1 = ax.bar(x - width / 2, accuracy, width, label='Predictions')
     rects2 = ax.bar(x + width / 2, base, width, label='BaseLine')
 
     # Add some text for labels, title and custom x-axis tick labels, etc.
-    ax.set_ylabel('Accuracy')
+    ax.set_ylabel('Predictions')
     ax.set_title(title)
     ax.set_xticks(x, tickers)
     ax.bar_label(rects1, padding=3, rotation='vertical')
     ax.bar_label(rects2, padding=3, rotation='vertical')
     fig.legend(loc="upper right")
+    # pyplot.ylim(0, 0.7)
+    pyplot.figure(figsize=(15, 2), dpi=200)
+    fig.tight_layout()
+    # create folder if needed
+    if not os.path.exists("../Data/Graphs/Classifier/Accuracy"):
+        os.makedirs("../Data/Graphs/Classifier/Accuracy")
+    pyplot.savefig("../Data/Graphs/Classifier/Accuracy" + "/" + title + ".png")
+    pyplot.figure().clear()
+    pyplot.clf()
+
+
+def create_double_bar_graph(tickers, accuracy, base, modeltype):
+    acc = accuracy[False]
+    acc_sent = accuracy[True]
+
+    title = modeltype + " accuracy sentiment comparison"
+
+    x = np.arange(len(tickers))  # the label locations
+    width = 0.3  # the width of the bars
+
+    fig, ax = pyplot.subplots(figsize=(12, 7))
+    rects1 = ax.bar(x - width, acc, width, label='Predictions (with Sentiment)')
+    rects2 = ax.bar(x, base, width, label='BaseLine')
+    rects3 = ax.bar(x + width, acc_sent, width, label='Predictions (no Sentiment)')
+
+    # Add some text for labels, title and custom x-axis tick labels, etc.
+    ax.set_ylabel('Predictions')
+    ax.set_title(title, loc='left')
+    ax.set_xticks(x, tickers)
+    ax.bar_label(rects1, padding=3)
+    ax.bar_label(rects2, padding=3)
+    ax.bar_label(rects3, padding=3)
+    ax.legend()
     pyplot.ylim(0, 0.7)
     fig.tight_layout()
     # create folder if needed
-    if not os.path.exists("../Data/Graphs/Classifier"):
-        os.makedirs("../Data/Graphs/Classifier")
-    pyplot.savefig("../Data/Graphs/Classifier" + "/" + title + ".png")
+    if not os.path.exists("../Data/Graphs/Classifier/Accuracy"):
+        os.makedirs("../Data/Graphs/Classifier/Accuracy")
+    pyplot.savefig("../Data/Graphs/Classifier/Accuracy" + "/" + title + ".png")
+    pyplot.figure().clear()
+    pyplot.clf()
+
+
+def plot_loss(history, ticker, modeltype, sentiment):
+    title = modeltype + " loss for " + ticker
+    if not sentiment:
+        title = title + " (no Sentiment)"
+    pyplot.plot(history.history['loss'], label='train')
+    pyplot.plot(history.history['val_loss'], label='test')
+    pyplot.legend()
+    pyplot.title(title)
+    # create folder if needed
+    if not os.path.exists("../Data/Graphs/Classifier/Loss"):
+        os.makedirs("../Data/Graphs/Classifier/Loss")
+    pyplot.savefig("../Data/Graphs/Classifier/Loss" + "/" + title + ".png")
+    pyplot.figure().clear()
+    pyplot.clf()
 
 
 def create_pr_graph(recall, precision, modeltype, ticker, sentiment):
@@ -86,6 +163,8 @@ def create_pr_graph(recall, precision, modeltype, ticker, sentiment):
     if not os.path.exists("../Data/Graphs/Classifier/PR"):
         os.makedirs("../Data/Graphs/Classifier/PR")
     pyplot.savefig("../Data/Graphs/Classifier/PR" + "/" + title + ".png")
+    pyplot.figure().clear()
+    pyplot.clf()
 
 
 def get_ticker_data(ticker_symbol, start_datetime, end_datetime):
@@ -104,6 +183,39 @@ def get_sentiment_data(file_location, start, end):
     # fill now empty rows with column averages
     column_means = df_sentiment_full.mean()
     return df_sentiment_full.fillna(column_means)
+
+
+def multi_train_compare_sentiment(tickers, starts, ends, locations, model):
+    sent_array = [False, True]
+    acc_dict = {}
+    base_vector = []
+    for sentiment in sent_array:
+        i = 0
+        acc_vector = []
+        base_vector = []
+        for filename in os.listdir('../Data/Sentiment'):
+            if i == len(tickers):
+                break
+            f = os.path.join('../Data/Sentiment', filename)
+            if os.path.isfile(f):
+                acc, base, fixed = train(ticker=tickers[i],
+                                         start=datetime.datetime(starts[i][0], starts[i][1], starts[i][2]),
+                                         end=datetime.datetime(ends[i][0], ends[i][1], ends[i][2]) - datetime.timedelta(
+                                             days=1),
+                                         data_location=locations[i],
+                                         model_name=model,
+                                         precall=False,
+                                         prediction_graph=False,
+                                         sentiment=sentiment
+                                         )
+                i += 1
+                acc_vector.append((round(acc, 3)))
+                base_vector.append((round(base, 3)))
+        acc_dict[sentiment] = acc_vector
+    create_double_bar_graph(tickers=tickers,
+                            accuracy=acc_dict,
+                            base=base_vector,
+                            modeltype=model_dict[model])
 
 
 def multi_train(tickers, starts, ends, locations, model, bar_graph=False, prediction_graph=False, precall_graph=False,
@@ -141,7 +253,7 @@ def multi_train(tickers, starts, ends, locations, model, bar_graph=False, predic
                          )
 
 
-def get_model(model_name, X, Y):
+def get_model(model_name, X, Y, ticker, sentiment):
     if model_name == "nn":
         # design network
         model = Sequential()
@@ -149,7 +261,8 @@ def get_model(model_name, X, Y):
         model.add(Dense(4, activation='relu'))
         model.add(Dense(1, activation='sigmoid'))
         model.compile(loss='binary_crossentropy', optimizer='rmsprop', metrics=['accuracy'])
-        model.fit(x=X, y=Y, epochs=200, validation_split=0.2, verbose=0, shuffle=False)
+        fit = model.fit(x=X, y=Y, epochs=25, validation_split=0.2, verbose=0, shuffle=True)
+        plot_loss(history=fit, ticker=ticker, modeltype=model_dict[model_name], sentiment=sentiment)
         return model
     elif model_name == "dt":
         model = RandomForestClassifier()
@@ -158,6 +271,31 @@ def get_model(model_name, X, Y):
     elif model_name == "nb":
         model = GaussianNB()
         model.fit(X, Y)
+        return model
+    elif model_name == "lstm":
+        TIMESTEPS = 20
+
+        timesteps_vals_X = []
+        vals_Y = Y[TIMESTEPS - 1:]
+        X = X.reshape(X.shape[0], 1, X.shape[1])
+        for x in range(20, len(X) + 1):
+            timesteps_vals_X.append(X[x - TIMESTEPS:x, 0])
+        vals_X = np.array(timesteps_vals_X)
+
+        x_train, x_test, y_train, y_test = train_test_split(vals_X, vals_Y, test_size=0.2, shuffle=True)
+
+        model = Sequential()
+        model.add(LSTM(units=50, return_sequences=True, input_shape=(x_train.shape[1], x_train.shape[2])))
+        model.add(Dropout(0.2))
+        model.add(LSTM(units=50, return_sequences=True))
+        model.add(Dropout(0.2))
+        model.add(LSTM(units=50, return_sequences=False))
+        model.add(Dense(1, activation='sigmoid'))
+        model.compile(loss='mae', optimizer='adam')
+        fit = model.fit(x_train, y_train, epochs=25, batch_size=72,
+                        validation_data=(x_test, y_test), verbose=0,
+                        shuffle=False)
+        plot_loss(history=fit, ticker=ticker, modeltype=model_dict[model_name], sentiment=sentiment)
         return model
 
 
@@ -197,8 +335,18 @@ def train(ticker, start, end, data_location, model_name, precall, prediction_gra
     X = training[:, :-1]
     Y = training[:, -1]
 
-    model = get_model(model_name, X, Y)
+    model = get_model(model_name, X, Y, ticker, sentiment)
     if model_name == 'nn':
+        prediction = model.predict(X_val)
+    elif model_name == 'lstm':
+        TIMESTEPS = 20
+
+        timesteps_vals_X = []
+        Y_val = Y_val[TIMESTEPS - 1:]
+        X_val = X_val.reshape(X_val.shape[0], 1, X_val.shape[1])
+        for x in range(20, len(X_val) + 1):
+            timesteps_vals_X.append(X_val[x - TIMESTEPS:x, 0])
+        X_val = np.array(timesteps_vals_X)
         prediction = model.predict(X_val)
     else:
         # probabilities for positive (1) used in prec-recall curve
@@ -206,7 +354,7 @@ def train(ticker, start, end, data_location, model_name, precall, prediction_gra
         prediction = prediction[:, [1]].reshape([prediction.shape[0]])
 
     if prediction_graph:
-        create_prediction_graph(real=Y_val, predicted=prediction.round(), modeltype=model_dict[model_name],
+        create_prediction_chance_graph(real=Y_val, predicted=prediction, modeltype=model_dict[model_name],
                                 ticker=ticker, sentiment=sentiment)
     my_accuracy = accuracy_score(Y_val, prediction.round())
     print('-' * 50)
@@ -266,10 +414,14 @@ location_array = [
 
 # available models:
 # Neural network (code: nn)
+# Long Short Term Memory (code: lstm)
 # Naive Bayes (code: nb)
 # Decision Tree (code: dt)
-multi_train(ticker_array, start_array, end_array, location_array, "nb",
-            bar_graph=True,
-            prediction_graph=False,
+multi_train(ticker_array, start_array, end_array, location_array, "nn",
+            bar_graph=False,
+            prediction_graph=True,
             precall_graph=False,
-            sentiment=False)
+            sentiment=True)
+
+
+# multi_train_compare_sentiment(ticker_array, start_array, end_array, location_array, "nn")
