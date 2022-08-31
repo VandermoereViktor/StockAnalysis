@@ -10,20 +10,22 @@ from keras.models import Sequential
 from sklearn.naive_bayes import GaussianNB
 from keras.layers import Dense, LSTM, Dropout
 from matplotlib import pyplot
+from keras.callbacks import EarlyStopping
 from sklearn.model_selection import train_test_split
 
 model_dict = {
     "lstm": "Long short-term memory",
     "nn": "Neural Network",
-    "dt": "Decision Tree",
+    "rf": "Random Forest",
     "nb": "Naive Bayes"
 }
 
 
-def create_prediction_graph(real, predicted, modeltype, ticker, sentiment):
+def create_prediction_graph(real, predicted, modeltype, ticker, sentiment, timesteps):
     title = modeltype + " correctness for " + ticker
     if not sentiment:
         title = title + " (no Sentiment)"
+    title = title + f" (steps {timesteps})"
     predicted = predicted.round()
     pyplot.figure(figsize=(15, 2), dpi=200)
     # used to get 'Predict Up' always on top
@@ -46,11 +48,11 @@ def create_prediction_graph(real, predicted, modeltype, ticker, sentiment):
     pyplot.clf()
 
 
-def create_prediction_chance_graph(real, predicted, modeltype, ticker, sentiment):
+def create_prediction_chance_graph(real, predicted, modeltype, ticker, sentiment, timesteps):
     title = modeltype + " correctness for " + ticker
     if not sentiment:
-        title = title + " (no Sentiment)"
-
+        title = title + " (no Sent)"
+    title = title + f" (steps {timesteps})"
     pyplot.figure(figsize=(15, 2), dpi=200)
     # used to get 'Predict Up' always on top
 
@@ -61,20 +63,20 @@ def create_prediction_chance_graph(real, predicted, modeltype, ticker, sentiment
             pyplot.plot(i, predicted[i], 'rx')
     pyplot.title(title)
     pyplot.tight_layout()
-    pyplot.ylim(0, 1)
     # create folder if needed
-    if not os.path.exists("../Data/Graphs/Classifier/Predictions/Chance"):
-        os.makedirs("../Data/Graphs/Classifier/Predictions/Chance")
-    pyplot.savefig("../Data/Graphs/Classifier/Predictions/Chance" + "/" + title + ".png")
+    if not os.path.exists("../Data/Graphs/Classifier/Predictions/"+modeltype):
+        os.makedirs("../Data/Graphs/Classifier/Predictions/"+modeltype)
+    pyplot.savefig("../Data/Graphs/Classifier/Predictions/"+modeltype + "/" + title + ".png")
     pyplot.figure().clear()
     pyplot.clf()
 
 
-def create_bar_graph(tickers, accuracy, base, modeltype, sentiment):
+def create_bar_graph(tickers, accuracy, base, modeltype, sentiment, timesteps):
 
     title = modeltype + " accuracy"
     if not sentiment:
-        title = title + " (no Sentiment)"
+        title = title + " (no Sent)"
+    title = title + f" (steps {timesteps})"
     x = np.arange(len(tickers))  # the label locations
     width = 0.35  # the width of the bars
     fig, ax = pyplot.subplots()
@@ -99,12 +101,12 @@ def create_bar_graph(tickers, accuracy, base, modeltype, sentiment):
     pyplot.clf()
 
 
-def create_double_bar_graph(tickers, accuracy, base, modeltype):
+def create_double_bar_graph(tickers, accuracy, base, modeltype, timesteps):
     acc = accuracy[False]
     acc_sent = accuracy[True]
 
     title = modeltype + " accuracy sentiment comparison"
-
+    title = title + f" (steps {timesteps})"
     x = np.arange(len(tickers))  # the label locations
     width = 0.3  # the width of the bars
 
@@ -131,27 +133,29 @@ def create_double_bar_graph(tickers, accuracy, base, modeltype):
     pyplot.clf()
 
 
-def plot_loss(history, ticker, modeltype, sentiment):
-    title = modeltype + " loss for " + ticker
+def plot_loss(history, ticker, modeltype, sentiment, epochs, timesteps):
+    title = modeltype + " loss for " + ticker + f"({epochs} epochs)"
     if not sentiment:
-        title = title + " (no Sentiment)"
+        title = title + " (no Sent)"
+    title = title + f" (steps {timesteps})"
     pyplot.plot(history.history['loss'], label='train')
     pyplot.plot(history.history['val_loss'], label='test')
     pyplot.legend()
     pyplot.title(title)
     # create folder if needed
-    if not os.path.exists("../Data/Graphs/Classifier/Loss"):
-        os.makedirs("../Data/Graphs/Classifier/Loss")
-    pyplot.savefig("../Data/Graphs/Classifier/Loss" + "/" + title + ".png")
+    if not os.path.exists("../Data/Graphs/Classifier/Loss/"+modeltype):
+        os.makedirs("../Data/Graphs/Classifier/Loss/"+modeltype)
+    pyplot.savefig("../Data/Graphs/Classifier/Loss/"+modeltype + "/" + title + ".png")
     pyplot.figure().clear()
     pyplot.clf()
 
 
-def create_pr_graph(recall, precision, modeltype, ticker, sentiment):
+def create_pr_graph(recall, precision, modeltype, ticker, sentiment, timesteps):
     # create precision recall curve
     title = modeltype + f" Precision-Recall Curve ({ticker})"
     if not sentiment:
-        title = title + " (no Sentiment)"
+        title = title + " (no Sent)"
+    title = title + f" (steps {timesteps})"
     fig, ax = pyplot.subplots()
     ax.plot(recall, precision, color='red')
     # add axis labels to plot
@@ -160,9 +164,9 @@ def create_pr_graph(recall, precision, modeltype, ticker, sentiment):
     ax.set_xlabel('Recall')
 
     # create folder if needed
-    if not os.path.exists("../Data/Graphs/Classifier/PR"):
-        os.makedirs("../Data/Graphs/Classifier/PR")
-    pyplot.savefig("../Data/Graphs/Classifier/PR" + "/" + title + ".png")
+    if not os.path.exists("../Data/Graphs/Classifier/PR/"+modeltype):
+        os.makedirs("../Data/Graphs/Classifier/PR/"+modeltype)
+    pyplot.savefig("../Data/Graphs/Classifier/PR/"+modeltype + "/" + title + ".png")
     pyplot.figure().clear()
     pyplot.clf()
 
@@ -185,7 +189,7 @@ def get_sentiment_data(file_location, start, end):
     return df_sentiment_full.fillna(column_means)
 
 
-def multi_train_compare_sentiment(tickers, starts, ends, locations, model):
+def multi_train_compare_sentiment(tickers, starts, ends, locations, model, timesteps):
     sent_array = [False, True]
     acc_dict = {}
     base_vector = []
@@ -206,7 +210,8 @@ def multi_train_compare_sentiment(tickers, starts, ends, locations, model):
                                          model_name=model,
                                          precall=False,
                                          prediction_graph=False,
-                                         sentiment=sentiment
+                                         sentiment=sentiment,
+                                         timesteps=timesteps
                                          )
                 i += 1
                 acc_vector.append((round(acc, 3)))
@@ -215,11 +220,12 @@ def multi_train_compare_sentiment(tickers, starts, ends, locations, model):
     create_double_bar_graph(tickers=tickers,
                             accuracy=acc_dict,
                             base=base_vector,
-                            modeltype=model_dict[model])
+                            modeltype=model_dict[model],
+                            timesteps=timesteps)
 
 
 def multi_train(tickers, starts, ends, locations, model, bar_graph=False, prediction_graph=False, precall_graph=False,
-                sentiment=True):
+                sentiment=True, timesteps=1):
     i = 0
     acc_vector = []
     base_vector = []
@@ -237,7 +243,8 @@ def multi_train(tickers, starts, ends, locations, model, bar_graph=False, predic
                                      model_name=model,
                                      precall=precall_graph,
                                      prediction_graph=prediction_graph,
-                                     sentiment=sentiment
+                                     sentiment=sentiment,
+                                     timesteps=timesteps
                                      )
             i += 1
             acc_vector.append((round(acc, 3)))
@@ -249,11 +256,12 @@ def multi_train(tickers, starts, ends, locations, model, bar_graph=False, predic
                          accuracy=acc_vector,
                          base=base_vector,
                          modeltype=model_dict[model],
-                         sentiment=sentiment
+                         sentiment=sentiment,
+                         timesteps=timesteps
                          )
 
 
-def get_model(model_name, X, Y, ticker, sentiment):
+def get_model(model_name, X, Y, ticker, sentiment, timesteps):
     if model_name == "nn":
         # design network
         model = Sequential()
@@ -261,10 +269,16 @@ def get_model(model_name, X, Y, ticker, sentiment):
         model.add(Dense(4, activation='relu'))
         model.add(Dense(1, activation='sigmoid'))
         model.compile(loss='binary_crossentropy', optimizer='rmsprop', metrics=['accuracy'])
-        fit = model.fit(x=X, y=Y, epochs=25, validation_split=0.2, verbose=0, shuffle=True)
-        plot_loss(history=fit, ticker=ticker, modeltype=model_dict[model_name], sentiment=sentiment)
+
+        es = EarlyStopping(monitor='val_loss', mode='min', verbose=0, patience=10)
+        fit = model.fit(x=X, y=Y, epochs=200, validation_split=0.2, verbose=0, shuffle=True, callbacks=[es])
+        epochs = es.stopped_epoch
+        if epochs == 0:
+            epochs = 200
+        plot_loss(history=fit, ticker=ticker, modeltype=model_dict[model_name],
+                  sentiment=sentiment, epochs=epochs, timesteps=timesteps)
         return model
-    elif model_name == "dt":
+    elif model_name == "rf":
         model = RandomForestClassifier()
         model.fit(X, Y)
         return model
@@ -273,13 +287,11 @@ def get_model(model_name, X, Y, ticker, sentiment):
         model.fit(X, Y)
         return model
     elif model_name == "lstm":
-        TIMESTEPS = 20
-
         timesteps_vals_X = []
-        vals_Y = Y[TIMESTEPS - 1:]
+        vals_Y = Y[timesteps - 1:]
         X = X.reshape(X.shape[0], 1, X.shape[1])
         for x in range(20, len(X) + 1):
-            timesteps_vals_X.append(X[x - TIMESTEPS:x, 0])
+            timesteps_vals_X.append(X[x - timesteps:x, 0])
         vals_X = np.array(timesteps_vals_X)
 
         x_train, x_test, y_train, y_test = train_test_split(vals_X, vals_Y, test_size=0.2, shuffle=True)
@@ -291,15 +303,48 @@ def get_model(model_name, X, Y, ticker, sentiment):
         model.add(Dropout(0.2))
         model.add(LSTM(units=50, return_sequences=False))
         model.add(Dense(1, activation='sigmoid'))
-        model.compile(loss='mae', optimizer='adam')
-        fit = model.fit(x_train, y_train, epochs=25, batch_size=72,
+        model.compile(loss='binary_crossentropy', optimizer='rmsprop', metrics=['accuracy'])
+        es = EarlyStopping(monitor='val_loss', mode='min', verbose=0, patience=10)
+        fit = model.fit(x_train, y_train, epochs=200, batch_size=72,
                         validation_data=(x_test, y_test), verbose=0,
-                        shuffle=False)
-        plot_loss(history=fit, ticker=ticker, modeltype=model_dict[model_name], sentiment=sentiment)
+                        shuffle=False, callbacks=[es])
+        epochs = es.stopped_epoch
+        if epochs == 0:
+            epochs = 200
+        plot_loss(history=fit, ticker=ticker, modeltype=model_dict[model_name],
+                  sentiment=sentiment, epochs=epochs, timesteps=timesteps)
         return model
 
 
-def train(ticker, start, end, data_location, model_name, precall, prediction_graph, sentiment):
+def add_timesteps(data, timesteps):
+    df = pd.DataFrame(data)
+    last_column = df.iloc[:, -1:]
+    # remove first rows (unused because of added timesteps)
+    last_column = last_column.iloc[timesteps-1:]
+    features = df.iloc[:, :-1]
+
+    n_vars = features.shape[1]
+    cols, names = list(), list()
+    for i in range(timesteps-1, 0, -1):
+        cols.append(features.shift(i))
+        names += [('var%d(t-%d)' % (j + 1, i)) for j in range(n_vars)]
+    for i in range(0, 1):
+        cols.append(features.shift(-i))
+        if i == 0:
+            names += [('var%d(t)' % (j + 1)) for j in range(n_vars)]
+        else:
+            names += [('var%d(t+%d)' % (j + 1, i)) for j in range(n_vars)]
+    agg = pd.concat(cols, axis=1)
+    # drop rows with NaN values
+    agg.dropna(inplace=True)
+    agg.columns = names
+
+    # add last row back
+    agg = agg.join(last_column)
+    return agg.values
+
+
+def train(ticker, start, end, data_location, model_name, precall, prediction_graph, sentiment, timesteps):
     df_ticker = get_ticker_data(ticker, start, end)
 
     df_features = get_sentiment_data(data_location, start, end)
@@ -324,6 +369,10 @@ def train(ticker, start, end, data_location, model_name, precall, prediction_gra
     min_max_scaler = MinMaxScaler(feature_range=(0, 1))
     data = min_max_scaler.fit_transform(df_feature_vector.values)
 
+    # aggregates multiple feature vectors in 1 row
+    if timesteps > 1 and model_name != 'lstm':
+        data = add_timesteps(data, timesteps)
+
     # split in training and testing dataframes
     length = data.shape[0]
     training = data[0:int(length * 0.8)]
@@ -335,17 +384,15 @@ def train(ticker, start, end, data_location, model_name, precall, prediction_gra
     X = training[:, :-1]
     Y = training[:, -1]
 
-    model = get_model(model_name, X, Y, ticker, sentiment)
+    model = get_model(model_name, X, Y, ticker, sentiment, timesteps)
     if model_name == 'nn':
         prediction = model.predict(X_val)
     elif model_name == 'lstm':
-        TIMESTEPS = 20
-
         timesteps_vals_X = []
-        Y_val = Y_val[TIMESTEPS - 1:]
+        Y_val = Y_val[timesteps - 1:]
         X_val = X_val.reshape(X_val.shape[0], 1, X_val.shape[1])
         for x in range(20, len(X_val) + 1):
-            timesteps_vals_X.append(X_val[x - TIMESTEPS:x, 0])
+            timesteps_vals_X.append(X_val[x - timesteps:x, 0])
         X_val = np.array(timesteps_vals_X)
         prediction = model.predict(X_val)
     else:
@@ -355,11 +402,11 @@ def train(ticker, start, end, data_location, model_name, precall, prediction_gra
 
     if prediction_graph:
         create_prediction_chance_graph(real=Y_val, predicted=prediction, modeltype=model_dict[model_name],
-                                ticker=ticker, sentiment=sentiment)
+                                       ticker=ticker, sentiment=sentiment, timesteps=timesteps)
     my_accuracy = accuracy_score(Y_val, prediction.round())
     print('-' * 50)
     print(ticker + ": ", my_accuracy)
-    base = Y.sum() / len(Y)
+    base = Y_val.sum() / len(Y_val)
     base = max(base, 1 - base)
     print("Baseline: ", base)
     fixed = my_accuracy / base
@@ -375,7 +422,7 @@ def train(ticker, start, end, data_location, model_name, precall, prediction_gra
         prediction = prediction.astype('float64')
         precision, recall, thresholds = precision_recall_curve(y_true=Y_val, probas_pred=prediction)
         create_pr_graph(recall=recall, precision=precision, modeltype=model_dict[model_name],
-                        ticker=ticker, sentiment=sentiment)
+                        ticker=ticker, sentiment=sentiment, timesteps=timesteps)
 
     return my_accuracy, base, fixed
 
@@ -416,12 +463,13 @@ location_array = [
 # Neural network (code: nn)
 # Long Short Term Memory (code: lstm)
 # Naive Bayes (code: nb)
-# Decision Tree (code: dt)
+# Random Forest (code: rf)
 multi_train(ticker_array, start_array, end_array, location_array, "lstm",
             bar_graph=False,
             prediction_graph=True,
-            precall_graph=False,
-            sentiment=True)
+            precall_graph=True,
+            sentiment=True,
+            timesteps=20)
 
 
-# multi_train_compare_sentiment(ticker_array, start_array, end_array, location_array, "nn")
+# multi_train_compare_sentiment(ticker_array, start_array, end_array, location_array, "lstm", 20)

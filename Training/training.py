@@ -128,7 +128,7 @@ def train(ticker, subreddit, folder_name, start, end, data_location, nr_observat
     min_max_scaler = MinMaxScaler(feature_range=(0, 1))
     scaled_features = min_max_scaler.fit_transform(df_feature_vector.values)
 
-    df_time_series_vector = series_to_supervised(scaled_features, 1, 1, True)
+    df_time_series_vector = series_to_supervised(scaled_features, 10, 1, True)
 
     df_time_series_vector = df_time_series_vector.values
     series_X, series_Y = df_time_series_vector[:, :-1], df_time_series_vector[:, -1]
